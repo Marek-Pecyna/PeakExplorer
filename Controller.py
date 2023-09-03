@@ -153,13 +153,7 @@ class Controller:
                     if self.view.result_window:
                         self.view.result_window.close()
                         self.view.make_result_window(self.ascii_filename,
-                                                     self.number_of_entries,
-                                                     self.xy_array_mass,
-                                                     self.mass,
-                                                     self.mass_interval,
-                                                     self.xy_array_time,
-                                                     self.time,
-                                                     self.time_interval)
+                                                     self.number_of_entries)
                         self.view.move_up(self.view.result_window)
                     self.view.main_window["-MASS_INTERVAL-"].update(self.mass_interval)
                     self.view.main_window["-TIME_INTERVAL-"].update(self.time_interval)
@@ -254,9 +248,17 @@ class Controller:
         ion_masses = self.summary.ion_masses
         counts_per_mass = self.summary.total_counts_per_mass
 
+        # fig1, (ax1, ax2) = plt.subplots(1, 2)
         fig1, (ax1) = plt.subplots()
         ax1.plot(self.summary.elution_times, self.summary.total_counts_per_time, color='blue', label='Total counts')
-        ax1.plot(self.summary.elution_times, self.mass_trace, color='red', label='Mass Trace')
+        if self.follow_mass_trace:
+            ax1.plot(self.summary.elution_times, self.mass_trace,
+                     color='red',
+                     label=f"Counts for mass trace {self.mass} ± {self.mass_interval} Da.")
+        ax1.set_xlabel('Elution time [min]')
+        ax1.set_ylabel('Counts')
+        ax1.legend(loc='upper left', ncol=1)
+        ax1.set_title('Counts per Time')
 
         # Make data to numpy-arrays for detected peaks
         x_max = np.array([value[0] for value in self.max_peaks])
@@ -266,26 +268,30 @@ class Controller:
         ax1.scatter(x_max, y_max, color='blue')
         ax1.scatter(x_min, y_min, color='red')
 
-        ax1.legend()
-        plt.show()
-        """
+        fig2, ax2 = plt.subplots()
+        ax2.plot(self.summary.ion_masses, self.summary.total_counts_per_mass, color='blue', label='Summed up total counts')
+        if self.follow_time_trace:
+            ax2.plot(self.summary.ion_masses, self.elution_time_trace, color='orange',
+                     label=f"Counts for minute trace {self.time} ± {self.time_interval} min.")
+        ax2.set_xlabel('Ion masses [Da]')
+        ax2.set_ylabel('Counts')
+        ax2.legend(loc='upper left', ncol=1)
+        ax2.set_title('Counts per Mass')
+
+        # fig1.suptitle(f"HPLC-MS Data '{Path(self.ascii_filename).name}'")
+
+
+
         # Show result window
         if self.view.result_window:
             self.view.result_window.close()
         self.view.make_result_window(self.ascii_filename,
-                                     self.number_of_entries,
-                                     self.xy_array_mass,
-                                     self.follow_mass_trace,
-                                     self.mass,
-                                     self.mass_interval,
-                                     self.xy_array_time,
-                                     self.follow_time_trace,
-                                     self.time,
-                                     self.time_interval,
-                                     self.max_peaks,
-                                     self.min_peaks)
+                                     self.number_of_entries)
         self.view.move_up(self.view.result_window)
-        """
+        self.view.draw_figure(self.view.result_window['-CANVAS1-'].TKCanvas, fig1)
+        self.view.draw_figure(self.view.result_window['-CANVAS2-'].TKCanvas, fig2)
+
+        plt.show()
         return
 
     def set_csv_settings(self):
@@ -305,6 +311,7 @@ class Controller:
         data = ParseCSV.read_csv_file(self.ascii_filename)  # Read the CSV file
         if data:
             Controller.logger.info(f"{len(data)} lines in file found.")
+            self.number_of_entries = len(data)
             self.summary = Data.get_total_counts(data)
 
             self.mass_trace = Data.mass_trace(data=data,

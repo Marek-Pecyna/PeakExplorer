@@ -37,7 +37,7 @@ class View:
 
         # ------ Menu Definition ------ #
         menu_def = [
-            ["&Datei", ["&Beenden"]],
+            ["&Datei", ["Öffnen in &Excel", "---", "&Beenden"]],
             ["&Hilfe", ["&Über", "&Einstellungen"]]
         ]
 
@@ -307,39 +307,6 @@ class View:
                                        element_justification='right')
         self.result_window.set_min_size(self.main_window.size)
 
-        # make fig and plot
-        subplot1_x = [value[0] for value in xy_array_mass]
-        subplot1_y = [value[1] for value in xy_array_mass]
-
-        fig1, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.plot(subplot1_x, subplot1_y, color='blue', label='Total counts')
-        if follow_mass_trace:
-            subplot1_y2 = [value[2] for value in xy_array_mass]
-            ax1.plot(subplot1_x, subplot1_y2, color='orange',
-                     label=f"Counts for mass trace {mass} ± {mass_interval} Da.")
-        ax1.set_xlabel('Elution time [min]')
-        ax1.set_ylabel('Counts')
-        ax1.legend(loc='upper left', ncol=1)
-
-        x_max = np.array([value[0] for value in max_peaks])
-        y_max = np.array([value[1] for value in max_peaks])
-        x_min = np.array([value[0] for value in min_peaks])
-        y_min = np.array([value[1] for value in min_peaks])
-        ax1.scatter(x_max, y_max, color='blue')
-        ax1.scatter(x_min, y_min, color='red')
-
-        subplot2_x = np.array([value[0] for value in xy_array_time])
-        subplot2_y = np.array([value[1] for value in xy_array_time])
-        ax2.plot(subplot2_x, subplot2_y, color='blue', label='Summed up total counts')
-        if follow_time_trace:
-            subplot2_y2 = [value[2] for value in xy_array_time]
-            ax2.plot(subplot2_x, subplot2_y2, color='orange',
-                     label=f"Counts for minute trace {time} ± {time_interval} min.")
-        ax2.set_xlabel('Ion masses [Da]')
-        ax2.set_ylabel('Counts')
-        ax2.legend(loc='upper left', ncol=1)
-        plt.show()
-        # self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
         return
 
     @staticmethod
