@@ -20,7 +20,6 @@ import sys
 
 from Controller import Controller
 from Constants import APP_TITLE, VERSION, SETTINGS_FILENAME
-from Model import Model
 from View import View
 
 
@@ -99,9 +98,6 @@ def main():
     logging.log(25, "_" * len(max(text)))
     logging.log(25, f'START {Controller.__module__}')
     controller = Controller(settings_filename=SETTINGS_FILENAME)
-    logging.log(25, f'START {Model.__module__}')
-    model = Model()
-    controller.set_model(model)
     logging.log(25, f'START {View.__module__}')
     view = View(title=f"{APP_TITLE} {VERSION}", settings=controller.settings)
     controller.set_view(view)

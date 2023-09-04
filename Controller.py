@@ -325,7 +325,7 @@ class Controller:
                 Controller.logger.debug(f"Time trace entries: {len(self.elution_time_trace)}")
 
         # Get Peaks in 'Counts per time' graph
-        self.max_peaks, self.min_peaks = self.model.peakdetect(y_axis=self.summary.total_counts_per_time,
+        self.max_peaks, self.min_peaks = Data.peakdetect(y_axis=self.summary.total_counts_per_time,
                                                                x_axis=self.summary.elution_times,
                                                                lookahead=50, delta=0)
         Controller.logger.info(f"Data analysis finished.")

@@ -1,5 +1,6 @@
 """
-Parse and analyze HPLC-MS raw data from CSV files (Module Data)
+Parse HPLC-MS raw data from CSV files (Module ParseCSV)
+Calculate elution times, ion masses, traces and more (Module Data)
 Generate Excel file with results (Module CreateExcel)
 """
 
@@ -7,10 +8,5 @@ Generate Excel file with results (Module CreateExcel)
 from Model.Data import Data  # Data analysis
 from Model.CreateExcel import CreateExcel  # Create Excel
 from Model.ParseCSV import ParseCSV
-__all__ = ['Model', 'Data', 'CreateExcel', 'ParseCSV']
+__all__ = ['Data', 'CreateExcel', 'ParseCSV']
 
-
-class Model:
-    @staticmethod
-    def peakdetect(y_axis, x_axis=None, lookahead=200, delta=0):
-        return Data.peakdetect(y_axis, x_axis, lookahead, delta)
