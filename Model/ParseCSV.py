@@ -40,7 +40,7 @@ class ParseCSV:
                         data.append(new_line)
                     else:
                         errors.append(reader.line_num)
-            except csv.Error as e:
+            except (csv.Error, UnicodeDecodeError) as e:
                 cls.logger.critical('file {}, line {}: {}'.format(csv_filename, reader.line_num, e))
                 return None
         if errors:

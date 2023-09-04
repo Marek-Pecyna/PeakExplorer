@@ -37,24 +37,24 @@ class View:
 
         # ------ Menu Definition ------ #
         menu_def = [
-            ["&Datei", ["Öffnen in &Excel", "---", "&Beenden"]],
+            ["&Datei", ["&Beenden"]],
             ["&Hilfe", ["&Über", "&Einstellungen"]]
         ]
 
         # ------ GUI Definition ------ #
-        file_types = (("Alle Dateien", "*.*"),
-                      ("Ascii-Dateien", "*.ascii*"),
-                      ("CSV-Dateien", "*.csv"))
+        file_types = (("Ascii-Dateien", "*.ascii*"),
+                      ("Text-Dateien", "*.txt"),
+                      ("CSV-Dateien", "*.csv"),
+                      ("Alle Dateien", "*.*"),)
         font = "Arial"
         font_size_title = 15
+        default_text = DEFAULT_ASCII_FILE
 
         if self.settings:
             font = self.settings["GUI"]["font_family"]
             font_size_title = int(int(self.settings["GUI"]["font_size"]) * 1.4)
             if self.settings["GUI"]["last_file"] != "":
                 default_text = self.settings["GUI"]["last_file"]
-            else:
-                default_text = DEFAULT_ASCII_FILE
 
         header = sg.Text("Konvertierung von HPLC-MS-Rohdaten in x-y-Werte", font=(font, font_size_title),
                          expand_x=True, justification="c")
@@ -63,14 +63,15 @@ class View:
             [sg.Input(key="-IN-", s=40, enable_events=True,
                       readonly=True, expand_x=True,
                       default_text=default_text),
-             sg.FileBrowse(button_text="Durchsuchen", s=14,
+             sg.FileBrowse(button_text="Datei", s=14,
                            file_types=file_types)],
-            ]
+        ]
 
-        source_file_frame = sg.Frame("Datei auswählen", source_file_layout, pad=(0, 10), expand_x=True)
+        source_file_frame = sg.Frame("Datei auswählen", source_file_layout, pad=(0, 10),
+                                     key='-SOURCE_FRAME-', expand_x=True)
 
         mass_frame = [
-            sg.Input(s=5, justification="r", key='-MASS-', enable_events=True),
+            sg.Input(s=5, justification="r", key='-MASS-', enable_events=True, tooltip="Ganzzahlige Werte"),
             sg.T("Da", s=3, pad=0),
             sg.T("±", s=1),
             sg.Input("", s=4, pad=0, k="-MASS_INTERVAL-", readonly=True, tooltip="0.1 bis 16.0 Da einstellbar"),
@@ -80,7 +81,7 @@ class View:
             ]
 
         time_frame = [
-            sg.Input(s=5, justification="r", key="-TIME-", enable_events=True),
+            sg.Input(s=5, justification="r", key="-TIME-", enable_events=True, tooltip="Ganzzahlige Werte"),
             sg.T("Min", s=3, pad=0),
             sg.T("±", s=1),
             sg.Input("", s=4, pad=0, k="-TIME_INTERVAL-", readonly=True, tooltip="0.1 bis 1.0 Min einstellbar"),
@@ -306,7 +307,6 @@ class View:
                                        resizable=True,
                                        element_justification='right')
         self.result_window.set_min_size(self.main_window.size)
-
         return
 
     @staticmethod
@@ -327,8 +327,7 @@ class View:
     def move_up_left(window):
         screen_width, screen_height = window.get_screen_dimensions()
         win_width, win_height = window.size
-        x, y = 0\
-            , 0
+        x, y = 0, 0
         window.move(x, y)
 
     def update_gui_settings(self):
@@ -353,6 +352,92 @@ class View:
     def popup(title, text):
         sg.popup(text, title=title)
         return
+
+    def plot_canvas(self, summary, mass, mass_interval, mass_trace, time, time_interval, elution_time_trace, max_peaks):
+        number_masses_per_time = summary.number_of_masses_per_time
+        max_mass_per_time = summary.max_mass_per_time
+        min_mass_per_time = summary.min_mass_per_time
+        ion_masses = summary.ion_masses
+        counts_per_mass = summary.total_counts_per_mass
+
+        # fig1, (ax1, ax2) = plt.subplots(1, 2)
+        fig1, (ax1) = plt.subplots()
+        ax1.plot(summary.elution_times, summary.total_counts_per_time, color='blue', label='Total counts')
+        if mass_trace:
+            ax1.plot(summary.elution_times, mass_trace,
+                     color='red',
+                     label=f"Counts for mass trace {mass} ± {mass_interval} Da.")
+        ax1.set_xlabel('Elution time [min]')
+        ax1.set_ylabel('Counts')
+        ax1.legend(loc='upper left', ncol=1)
+        ax1.set_title('Counts per Time')
+
+        # Make data to numpy-arrays for detected peaks
+        x_max = np.array([value[0] for value in max_peaks])
+        y_max = np.array([value[1] for value in max_peaks])
+        ax1.scatter(x_max, y_max, color='green', label='Maxima')
+        ax1.legend(loc='upper left', ncol=1)
+        # ax1.scatter(x_min, y_min, color='red')
+
+        fig2, ax2 = plt.subplots()
+        ax2.plot(summary.ion_masses, summary.total_counts_per_mass,
+                 color='blue', label='Summed up total counts')
+        if elution_time_trace:
+            ax2.plot(summary.ion_masses, elution_time_trace, color='orange',
+                     label=f"Counts for minute trace {time} ± {time_interval} min.")
+        ax2.set_xlabel('Ion masses [Da]')
+        ax2.set_ylabel('Counts')
+        ax2.legend(loc='upper left', ncol=1)
+        ax2.set_title('Counts per Mass')
+
+        self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
+        self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
+
+        # plt.show()
+        # fig1.suptitle(f"HPLC-MS Data '{Path(self.ascii_filename).name}'")
+        return
+
+        """
+        # make fig and plot
+        subplot1_x = [value[0] for value in xy_array_mass]
+        subplot1_y = [value[1] for value in xy_array_mass]
+    
+        fig1, ax = plt.subplots()
+        ax.plot(subplot1_x, subplot1_y, color='blue', label='Total counts')
+        if follow_mass_trace:
+            subplot1_y2 = [value[2] for value in xy_array_mass]
+            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for mass trace {mass} ± {mass_interval}")
+    
+        # Make data to numpy-arrays
+        x = np.array([value[0] for value in xy_array_mass])
+        y = np.array([value[1] for value in xy_array_mass])
+    
+        # find peaks
+        max_peaks, min_peaks = self.peakdetect(y_axis=y, x_axis=x, lookahead=50, delta=0)
+        subplot1_x = [value[0] for value in max_peaks]  # Position
+        subplot1_y = [value[1] for value in max_peaks]  # Peak value
+        ax.scatter(subplot1_x, subplot1_y, color='green', label='Maxima')
+    
+        ax.set_xlabel('Elution time [min]')
+        ax.set_ylabel('Counts')
+        ax.legend(loc='upper left', ncol=1)
+        # Instead of plt.show
+        self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
+    
+        subplot1_x = [value[0] for value in xy_array_time]
+        subplot1_y = [value[1] for value in xy_array_time]
+    
+        fig2, ax = plt.subplots()
+        ax.plot(subplot1_x, subplot1_y, color='blue', label='Summed up total counts')
+        if follow_time_trace:
+            subplot1_y2 = [value[2] for value in xy_array_time]
+            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for minute trace {time} ± {time_interval}")
+        ax.set_xlabel('Ion masses [Da]')
+        ax.set_ylabel('Counts')
+        ax.legend(loc='upper left', ncol=1)
+        # Instead of plt.show
+        self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
+        """
 
 
 def module_test():

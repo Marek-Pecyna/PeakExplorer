@@ -56,8 +56,6 @@ class Controller:
         self.mass_trace = None
         self.elution_time_trace = None
         self.number_of_entries = None
-        self.xy_array_mass = None
-        self.xy_array_time = None
         self.max_peaks = []
         self.min_peaks = []
 
@@ -79,7 +77,7 @@ class Controller:
             Controller.logger.warning(f"Error on config file '{self.settings_filename}'."
                                       f" Program defaults will be used.")
             settings_dict = {"GUI": {"font_size": "14",
-                                     "font_family": "TanBlue",
+                                     "font_family": "Arial",
                                      "theme": "Reddit",
                                      "last_file": ""},
                              "CSV": {"delimiter": ",",
@@ -105,6 +103,7 @@ class Controller:
 
         if Path(self.settings['GUI']['last_file']).is_file():
             self.view.main_window["-IN-"].update(self.settings["GUI"]["last_file"])
+
         self.view.main_window["-MASS_INTERVAL-"].update(self.mass_interval)
         self.view.main_window["-TIME_INTERVAL-"].update(self.time_interval)
         self.view.main_window["-MASS-"].update(self.mass)
@@ -160,7 +159,11 @@ class Controller:
                     self.view.main_window["-MASS-"].update(self.mass)
                     self.view.main_window["-TIME-"].update(self.time)
             if self.event == "-IN-":
-                self.settings['GUI']['last_file'] = self.values['-IN-']
+                if Path(self.values['-IN-']).is_file():
+                    self.settings['GUI']['last_file'] = self.values['-IN-']
+                else:
+                    self.view.main_window['-IN-'].update('')
+
             if self.event == "-MASS_TRACE-":
                 visible = True if self.values["-MASS_TRACE-"] else False
                 self.view.main_window["-FRAME1-"].update(visible=visible)
@@ -204,33 +207,36 @@ class Controller:
                     self.time_interval = 1.0
                 self.view.main_window["-TIME_INTERVAL-"].update(f"{self.time_interval:0.1f}")
             if self.event == "-START_BUTTON-":
-                # Set flags for mass_trace and/or elution_time_trace
-                self.follow_mass_trace = True if self.values['-MASS_TRACE-'] else False
-                self.follow_time_trace = True if self.values['-ELUTION_TIME_TRACE-'] else False
-                # Convert GUI entries for mass and time to float -> no ValueError here, because of prefiltering
-                self.mass = float(self.values['-MASS-'])
-                self.time = float(self.values['-TIME-'])
-                # Check, if given filepath is valid
-                if Path(self.values['-IN-']).is_file():
-                    self.ascii_filename = self.values['-IN-']
-                    self.settings['GUI']['last_file'] = self.ascii_filename
-                    self.output_folder = Path(self.ascii_filename).parent
-                    Controller.logger.info('Start was button pressed (and all required infos are given by user).')
-                    Controller.logger.debug(f"{self.ascii_filename = }")
-                    Controller.logger.debug(f"{self.output_folder = }")
-                    Controller.logger.debug(f"{self.follow_mass_trace = }, {self.mass = }, {self.mass_interval = }")
-                    Controller.logger.debug(f"{self.follow_time_trace = }, {self.time = }, {self.time_interval = }")
-                    self.start_button_pressed()
-                else:
-                    self.view.main_window['-IN-'].update('')
+                self.start_button_pressed()
 
         self.view.main_window.close()  # Close GUI, return to main()
         return
 
     def start_button_pressed(self):
         """ Here the analysis and Excel file generation is controlled. """
-        Controller.logger.info(f"{self.start_button_pressed.__doc__}")
+        Controller.logger.info('Start button was pressed...')
 
+        # Check, if given filepath is valid
+        if not Path(self.values['-IN-']).is_file():
+            self.view.main_window['-IN-'].update('')
+            return
+
+        # Set flags for mass_trace and/or elution_time_trace
+        self.follow_mass_trace = True if self.values['-MASS_TRACE-'] else False
+        self.follow_time_trace = True if self.values['-ELUTION_TIME_TRACE-'] else False
+        # Convert GUI entries for mass and time to float -> no ValueError here, because of prefiltering
+        self.mass = float(self.values['-MASS-'])
+        self.time = float(self.values['-TIME-'])
+        self.ascii_filename = self.values['-IN-']
+        self.settings['GUI']['last_file'] = self.ascii_filename
+        self.output_folder = Path(self.ascii_filename).parent
+        Controller.logger.info('Start was button pressed (and all required infos are given by user).')
+        Controller.logger.debug(f"{self.ascii_filename = }")
+        Controller.logger.debug(f"{self.output_folder = }")
+        Controller.logger.debug(f"{self.follow_mass_trace = }, {self.mass = }, {self.mass_interval = }")
+        Controller.logger.debug(f"{self.follow_time_trace = }, {self.time = }, {self.time_interval = }")
+
+        # Start analysis -> Results are stored in instance variables
         if not self.analysis():
             Controller.logger.error(f"Error in analyzing file content!")
             title = 'Dateiformat kann nicht gelesen werden!'
@@ -240,58 +246,25 @@ class Controller:
             self.view.popup(title, "\n".join(text))
             return
 
-        # self.create_excel_file()  # generate Excel file
+        # Generate Excel file
+        # self.create_excel_file()
 
-        number_masses_per_time = self.summary.number_of_masses_per_time
-        max_mass_per_time = self.summary.max_mass_per_time
-        min_mass_per_time = self.summary.min_mass_per_time
-        ion_masses = self.summary.ion_masses
-        counts_per_mass = self.summary.total_counts_per_mass
-
-        # fig1, (ax1, ax2) = plt.subplots(1, 2)
-        fig1, (ax1) = plt.subplots()
-        ax1.plot(self.summary.elution_times, self.summary.total_counts_per_time, color='blue', label='Total counts')
-        if self.follow_mass_trace:
-            ax1.plot(self.summary.elution_times, self.mass_trace,
-                     color='red',
-                     label=f"Counts for mass trace {self.mass} ± {self.mass_interval} Da.")
-        ax1.set_xlabel('Elution time [min]')
-        ax1.set_ylabel('Counts')
-        ax1.legend(loc='upper left', ncol=1)
-        ax1.set_title('Counts per Time')
-
-        # Make data to numpy-arrays for detected peaks
-        x_max = np.array([value[0] for value in self.max_peaks])
-        y_max = np.array([value[1] for value in self.max_peaks])
-        x_min = np.array([value[0] for value in self.min_peaks])
-        y_min = np.array([value[1] for value in self.min_peaks])
-        ax1.scatter(x_max, y_max, color='blue')
-        ax1.scatter(x_min, y_min, color='red')
-
-        fig2, ax2 = plt.subplots()
-        ax2.plot(self.summary.ion_masses, self.summary.total_counts_per_mass, color='blue', label='Summed up total counts')
-        if self.follow_time_trace:
-            ax2.plot(self.summary.ion_masses, self.elution_time_trace, color='orange',
-                     label=f"Counts for minute trace {self.time} ± {self.time_interval} min.")
-        ax2.set_xlabel('Ion masses [Da]')
-        ax2.set_ylabel('Counts')
-        ax2.legend(loc='upper left', ncol=1)
-        ax2.set_title('Counts per Mass')
-
-        # fig1.suptitle(f"HPLC-MS Data '{Path(self.ascii_filename).name}'")
-
-
-
-        # Show result window
+        # Make result window
         if self.view.result_window:
             self.view.result_window.close()
         self.view.make_result_window(self.ascii_filename,
                                      self.number_of_entries)
         self.view.move_up(self.view.result_window)
-        self.view.draw_figure(self.view.result_window['-CANVAS1-'].TKCanvas, fig1)
-        self.view.draw_figure(self.view.result_window['-CANVAS2-'].TKCanvas, fig2)
 
-        plt.show()
+        # Generate Plots
+        self.view.plot_canvas(summary=self.summary,
+                              mass=self.mass,
+                              mass_interval=self.mass_interval,
+                              mass_trace=self.mass_trace,
+                              time=self.time,
+                              time_interval=self.time_interval,
+                              elution_time_trace=self.elution_time_trace,
+                              max_peaks=self.max_peaks)
         return
 
     def set_csv_settings(self):
@@ -305,35 +278,58 @@ class Controller:
         ParseCSV.col_data_starts = int(self.settings['DATA']['col_data_starts'])
         return
 
+    def pre_analysis(self) -> bool:
+        Controller.logger.info('Data Pre-analysis starts.')
+        # Set settings for ParseCSV module
+        self.set_csv_settings()
+
+        # Read CSV file
+        data = ParseCSV.read_csv_file(self.ascii_filename)
+        if not data:
+            return False
+
+        Controller.logger.info(f"{len(data)} lines found in file.")
+        self.number_of_entries = len(data)
+        # self.view.main_window['-SOURCE_FRAME-'].update(value=f"Datei ausgewählt ✔ ")
+        return True
+
     def analysis(self):
         Controller.logger.info('Data analysis starts.')
-        self.set_csv_settings()  # set settings for ParseCSV module
-        data = ParseCSV.read_csv_file(self.ascii_filename)  # Read the CSV file
-        if data:
-            Controller.logger.info(f"{len(data)} lines in file found.")
-            self.number_of_entries = len(data)
-            self.summary = Data.get_total_counts(data)
+        # Set settings for ParseCSV module
+        self.set_csv_settings()
 
+        # Read CSV file
+        data = ParseCSV.read_csv_file(self.ascii_filename)
+        if not data:
+            return
+
+        # Get 'Counts per time' and 'Counts per mass'
+        Controller.logger.info(f"{len(data)} lines found in file.")
+        self.number_of_entries = len(data)
+        self.summary = Data.get_total_counts(data)
+
+        # Extract mass trace
+        if self.follow_mass_trace:
             self.mass_trace = Data.mass_trace(data=data,
                                               mass=self.mass,
                                               mass_interval=self.mass_interval)
+            if self.mass_trace:
+                Controller.logger.debug(f"Mass trace entries: {len(self.mass_trace)}")
 
+        # Extract elution time trace
+        if self.follow_time_trace:
             self.elution_time_trace = Data.elution_time_trace(data=data,
                                                               time=self.time,
                                                               time_interval=self.time_interval)
-
-            if self.mass_trace:
-                Controller.logger.debug(f"Mass trace entries: {len(self.mass_trace)}")
             if self.elution_time_trace:
                 Controller.logger.debug(f"Time trace entries: {len(self.elution_time_trace)}")
-            Controller.logger.info(f"Data analysis finished.")
 
-            self.max_peaks, self.min_peaks = self.model.peakdetect(y_axis=self.summary.total_counts_per_time,
-                                                                   x_axis=self.summary.elution_times,
-                                                                   lookahead=50, delta=0)
-
-            return True
-        return False
+        # Get Peaks in 'Counts per time' graph
+        self.max_peaks, self.min_peaks = self.model.peakdetect(y_axis=self.summary.total_counts_per_time,
+                                                               x_axis=self.summary.elution_times,
+                                                               lookahead=50, delta=0)
+        Controller.logger.info(f"Data analysis finished.")
+        return True
 
     @staticmethod
     def is_file_in_use(filename):
@@ -382,18 +378,24 @@ class Controller:
 
         # Generation of Result-Excel-File
         Controller.logger.info(f"Generation of Excel file:")
-        data1 = list(zip(self.summary.elution_times, self.summary.total_counts_per_time, self.mass_trace))
-        data2 = list(zip(self.summary.ion_masses, self.summary.total_counts_per_mass, self.elution_time_trace))
-        modes = {"counts_per_time": {"data": data1},
-                 "counts_per_mass": {"data": data2}
+        data1 = list(zip(self.summary.elution_times, self.summary.total_counts_per_time, self.mass_trace))\
+            if self.mass_trace \
+            else list(zip(self.summary.elution_times, self.summary.total_counts_per_time))
+
+        data2 = list(zip(self.summary.ion_masses, self.summary.total_counts_per_mass, self.elution_time_trace)) \
+            if self.elution_time_trace\
+            else list(zip(self.summary.ion_masses, self.summary.total_counts_per_mass))
+
+        modes = {"counts_per_time": {"data": data1, "trace": 0, "deviation": 0.0},
+                 "counts_per_mass": {"data": data2, "trace": 0, "deviation": 0.0}
                  }
         if self.follow_mass_trace:
-            modes["counts_per_time"].update({"trace": self.mass,
-                                             "deviation": self.mass_interval})
+            modes["counts_per_time"]["trace"] = self.mass
+            modes["counts_per_time"]["deviation"] = self.mass_interval
 
         if self.follow_time_trace:
-            modes["counts_per_mass"].update({"trace": self.time,
-                                             "deviation": self.time_interval})
+            modes["counts_per_mass"]["trace"] = self.time
+            modes["counts_per_mass"]["deviation"] = self.time_interval
 
         Controller.logger.info(f"Aufruf '{CreateExcel.create_excel_file.__name__}':")
         CreateExcel.create_excel_file(modes=modes,

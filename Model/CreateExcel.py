@@ -33,8 +33,8 @@ class CreateExcel:
         # Create data_sheets and fill corresponding chart_sheets with chart
         for index, mode in enumerate(modes):
             data = modes[mode]["data"]
-            trace = modes[mode]["trace"] if "trace" in modes[mode] else 0
-            deviation = modes[mode]["deviation"] if "deviation" in modes[mode] else 0
+            trace = modes[mode]["trace"]
+            deviation = modes[mode]["deviation"]
 
             # Create data_sheet
             cls.logger.debug(f"Arbeitsblatt 'Data {mode.title()}' wird erzeugt.")
@@ -79,12 +79,12 @@ class CreateExcel:
         if mode == "counts_per_time":
             worksheet.write(0, 0, "Elution time [min]", underline_format)
             worksheet.write(0, 1, "Total counts", underline_format)
-            if trace != 0:
+            if trace != 0 or deviation != 0:
                 worksheet.write(0, 2, f"Counts for mass trace {trace}±{deviation} Da", underline_format)
         else:
             worksheet.write(0, 0, "Ion masses [Da]", underline_format)
             worksheet.write(0, 1, "Summed up total counts", underline_format)
-            if trace != 0:
+            if trace != 0 or deviation != 0:
                 worksheet.write(0, 2, f"Counts for minute trace {trace}±{deviation} Min", underline_format)
 
         worksheet.set_column(0, 2, 22)
@@ -93,7 +93,7 @@ class CreateExcel:
         for index, entry in enumerate(data):
             worksheet.write(1 + index, 0, entry[0], float_format)
             worksheet.write(1 + index, 1, entry[1], float_format)
-            if trace != 0:
+            if trace != 0 or deviation != 0:
                 worksheet.write(1 + index, 2, entry[2], float_format)
         worksheet.write(0, 5, f"HPLC-MS-Data derived from '{source_filename}'")
         return

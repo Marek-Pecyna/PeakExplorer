@@ -1,6 +1,5 @@
 from collections import namedtuple
 import logging
-import matplotlib.pyplot as plt
 import numpy as np
 
 __all__ = ['Data']
@@ -25,7 +24,7 @@ class Data:
     logger.info('Module imported.')
 
     @staticmethod
-    def get_total_counts(data: Line):
+    def get_total_counts(data: [Line]):
         elution_times = []
         total_counts_per_time = []
         total_masses_per_time = []
@@ -65,7 +64,7 @@ class Data:
                        total_counts_per_mass=total_counts_per_mass)
 
     @classmethod
-    def mass_trace(cls, data: Line, mass=0, mass_interval=0):
+    def mass_trace(cls, data: [Line], mass=0, mass_interval=0):
         """
         Calculates mass_trace in 'counts per elution time'
         Returns: 1-D list or None
@@ -89,7 +88,7 @@ class Data:
         return None
 
     @classmethod
-    def elution_time_trace(cls, data: Line, time=0, time_interval=0):
+    def elution_time_trace(cls, data: [Line], time=0, time_interval=0):
         """
         Calculates elution_time_trace in 'counts per mass'
         Returns: 1-D list or None
@@ -115,7 +114,8 @@ class Data:
                         else:
                             ion_masses_dict[mass] = count
                     else:
-                        ion_masses_dict[mass] = 0
+                        if mass not in ion_masses_dict:  # Don't count masses outside correct elution time
+                            ion_masses_dict[mass] = 0
 
             ion_masses = sorted(list(ion_masses_dict.keys()))  # Sort keys
             return [ion_masses_dict[key] for key in ion_masses]  # ...and values
@@ -262,52 +262,3 @@ class Data:
         y_axis = np.array(y_axis)
         x_axis = np.array(x_axis)
         return x_axis, y_axis
-
-
-
-    def plot_canvas(self,
-                    xy_array_mass, follow_mass_trace, mass, mass_interval,
-                    xy_array_time, time_trace, time, time_interval):
-        pass
-        """
-        # make fig and plot
-        subplot1_x = [value[0] for value in xy_array_mass]
-        subplot1_y = [value[1] for value in xy_array_mass]
-
-        fig1, ax = plt.subplots()
-        ax.plot(subplot1_x, subplot1_y, color='blue', label='Total counts')
-        if follow_mass_trace:
-            subplot1_y2 = [value[2] for value in xy_array_mass]
-            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for mass trace {mass} ± {mass_interval}")
-            
-        # Make data to numpy-arrays
-        x = np.array([value[0] for value in xy_array_mass])
-        y = np.array([value[1] for value in xy_array_mass])
-        
-        # find peaks
-        max_peaks, min_peaks = self.peakdetect(y_axis=y, x_axis=x, lookahead=50, delta=0)
-        subplot1_x = [value[0] for value in max_peaks]  # Position
-        subplot1_y = [value[1] for value in max_peaks]  # Peak value
-        ax.scatter(subplot1_x, subplot1_y, color='green', label='Maxima')
-
-        ax.set_xlabel('Elution time [min]')
-        ax.set_ylabel('Counts')
-        ax.legend(loc='upper left', ncol=1)
-        # Instead of plt.show
-        self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
-
-        subplot1_x = [value[0] for value in xy_array_time]
-        subplot1_y = [value[1] for value in xy_array_time]
-
-        fig2, ax = plt.subplots()
-        ax.plot(subplot1_x, subplot1_y, color='blue', label='Summed up total counts')
-        if follow_time_trace:
-            subplot1_y2 = [value[2] for value in xy_array_time]
-            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for minute trace {time} ± {time_interval}")
-        ax.set_xlabel('Ion masses [Da]')
-        ax.set_ylabel('Counts')
-        ax.legend(loc='upper left', ncol=1)
-        # Instead of plt.show
-        self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
-        """
-
