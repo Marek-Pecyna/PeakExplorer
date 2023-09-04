@@ -1,6 +1,5 @@
 from os import startfile
 from pathlib import Path
-import numpy as np
 
 import configparser
 import logging
@@ -31,6 +30,8 @@ class Controller:
         # GUI hardcoded defaults
         self.follow_mass_trace = True
         self.follow_time_trace = True
+        self.show_with_matplot = True
+        self.open_excel = False
         self.mass = 465  # mass in Dalton
         self.mass_interval = 0.5  # +- deviation in Dalton
         self.time = 4  # elution time in minutes
@@ -97,12 +98,23 @@ class Controller:
         """This function prepares the GUI in a useful state for first usage"""
         Controller.logger.info(f"{self.set_view.__doc__}")
         self.view = view
+
+        plt.close('all')  # if some windows are still open, close them
+
         if self.settings:
             self.view.update_gui_settings()
             self.view.settings_filename = self.settings_filename
 
         if Path(self.settings['GUI']['last_file']).is_file():
             self.view.main_window["-IN-"].update(self.settings["GUI"]["last_file"])
+
+        self.view.main_window["-MATPLOT-"].update(self.show_with_matplot)
+        self.view.main_window["-EXCEL-"].update(self.open_excel)
+        self.view.main_window["-MASS_FRAME-"].update(visible=self.follow_mass_trace)
+        self.view.main_window["-MASS_TRACE-"].update(self.follow_mass_trace)
+
+        self.view.main_window["-TIME_FRAME-"].update(visible=self.follow_time_trace)
+        self.view.main_window["-ELUTION_TIME_TRACE-"].update(self.follow_time_trace)
 
         self.view.main_window["-MASS_INTERVAL-"].update(self.mass_interval)
         self.view.main_window["-TIME_INTERVAL-"].update(self.time_interval)
@@ -153,7 +165,7 @@ class Controller:
                         self.view.result_window.close()
                         self.view.make_result_window(self.ascii_filename,
                                                      self.number_of_entries)
-                        self.view.move_up(self.view.result_window)
+                        # self.view.move_up(self.view.result_window)
                     self.view.main_window["-MASS_INTERVAL-"].update(self.mass_interval)
                     self.view.main_window["-TIME_INTERVAL-"].update(self.time_interval)
                     self.view.main_window["-MASS-"].update(self.mass)
@@ -166,10 +178,10 @@ class Controller:
 
             if self.event == "-MASS_TRACE-":
                 visible = True if self.values["-MASS_TRACE-"] else False
-                self.view.main_window["-FRAME1-"].update(visible=visible)
+                self.view.main_window["-MASS_FRAME-"].update(visible=visible)
             if self.event == "-ELUTION_TIME_TRACE-":
                 visible = True if self.values["-ELUTION_TIME_TRACE-"] else False
-                self.view.main_window["-FRAME2-"].update(visible=visible)
+                self.view.main_window["-TIME_FRAME-"].update(visible=visible)
             if self.event == '-MASS-':
                 if not self.is_int(self.values['-MASS-']):
                     self.view.main_window['-MASS-'].update("")
@@ -224,6 +236,8 @@ class Controller:
         # Set flags for mass_trace and/or elution_time_trace
         self.follow_mass_trace = True if self.values['-MASS_TRACE-'] else False
         self.follow_time_trace = True if self.values['-ELUTION_TIME_TRACE-'] else False
+        self.show_with_matplot = True if self.values['-MATPLOT-'] else False
+        self.open_excel = True if self.values['-EXCEL-'] else False
         # Convert GUI entries for mass and time to float -> no ValueError here, because of prefiltering
         self.mass = float(self.values['-MASS-'])
         self.time = float(self.values['-TIME-'])
@@ -240,31 +254,40 @@ class Controller:
         if not self.analysis():
             Controller.logger.error(f"Error in analyzing file content!")
             title = 'Dateiformat kann nicht gelesen werden!'
-            text = [f"'{Path(self.ascii_filename).name}'",
+            text = [f"Die Datei\n"
+                    f"\n'{Path(self.ascii_filename).name}'",
                     '\nkann nicht korrekt als CSV-Datei eingelesen werden.',
                     'Bitte passen Sie die Einstellungen an.']
             self.view.popup(title, "\n".join(text))
             return
 
         # Generate Excel file
-        # self.create_excel_file()
-
-        # Make result window
-        if self.view.result_window:
-            self.view.result_window.close()
-        self.view.make_result_window(self.ascii_filename,
-                                     self.number_of_entries)
-        self.view.move_up(self.view.result_window)
+        if self.open_excel:
+            self.create_excel_file()
 
         # Generate Plots
-        self.view.plot_canvas(summary=self.summary,
-                              mass=self.mass,
-                              mass_interval=self.mass_interval,
-                              mass_trace=self.mass_trace,
-                              time=self.time,
-                              time_interval=self.time_interval,
-                              elution_time_trace=self.elution_time_trace,
-                              max_peaks=self.max_peaks)
+        fig1, fig2 = self.view.plot_canvas(matplot=self.show_with_matplot,
+                                           summary=self.summary,
+                                           mass=self.mass,
+                                           mass_interval=self.mass_interval,
+                                           mass_trace=self.mass_trace,
+                                           time=self.time,
+                                           time_interval=self.time_interval,
+                                           elution_time_trace=self.elution_time_trace,
+                                           max_peaks=self.max_peaks)
+
+        # Show with Matplot
+        if self.show_with_matplot:
+            plt.show()
+        else:
+            # Show in result window
+            if self.view.result_window:
+                self.view.result_window.close()
+            plt.close('all')
+            self.view.make_result_window(self.ascii_filename,
+                                         self.number_of_entries)
+            self.view.draw_figure(self.view.result_window['-CANVAS1-'].TKCanvas, fig1)
+            self.view.draw_figure(self.view.result_window['-CANVAS2-'].TKCanvas, fig2)
         return
 
     def set_csv_settings(self):
@@ -277,21 +300,6 @@ class Controller:
         ParseCSV.col_number_masses = int(self.settings['DATA']['col_number_masses'])
         ParseCSV.col_data_starts = int(self.settings['DATA']['col_data_starts'])
         return
-
-    def pre_analysis(self) -> bool:
-        Controller.logger.info('Data Pre-analysis starts.')
-        # Set settings for ParseCSV module
-        self.set_csv_settings()
-
-        # Read CSV file
-        data = ParseCSV.read_csv_file(self.ascii_filename)
-        if not data:
-            return False
-
-        Controller.logger.info(f"{len(data)} lines found in file.")
-        self.number_of_entries = len(data)
-        # self.view.main_window['-SOURCE_FRAME-'].update(value=f"Datei ausgewählt ✔ ")
-        return True
 
     def analysis(self):
         Controller.logger.info('Data analysis starts.')
@@ -371,7 +379,7 @@ class Controller:
         # Check if file is in use
         if self.is_file_in_use(result_filename):
             title = 'Datei bereits geöffnet!'
-            text = f"Die Datei\n\n{result_filename}\n\nist bereits in einer anderen Anwendung geöffnet.\n" + \
+            text = f"Die Datei\n\n{Path(result_filename).name}\n\nist bereits in einer anderen Anwendung geöffnet.\n" + \
                    "Bitte schließen diese Anwendung.\n"
             self.view.popup(title, text)
             return

@@ -56,7 +56,7 @@ class ParseCSV:
         Returns None if errors during parsing of this line occur
         """
         if len(line) < cls.col_data_starts:  # eine konforme Datenzeile hat mindestens 8 Einträge
-            cls.logger.warning(f"Wrong format while parsing {line_num}. line.")
+            cls.logger.info(f"Wrong format while parsing {line_num}. line.")
             return None
 
         # Change all decimals to '.' just to be sure
@@ -67,7 +67,7 @@ class ParseCSV:
             elution_time = float(line[cls.col_retention])
             number_of_masses = float(line[cls.col_number_masses])
         except (ValueError, IndexError) as e:
-            cls.logger.warning(f"{type(e)} while parsing {line_num}. line.")
+            cls.logger.info(f"{type(e)} while parsing {line_num}. line.")
             return None
         if number_of_masses == 0:  # no masses for this elution time
             cls.logger.warning(f"No masses for {elution_time = } in {line_num = }.")
@@ -83,7 +83,7 @@ class ParseCSV:
                 mass = float(value[0])
                 count = float(value[1])
             except (ValueError, IndexError) as e:
-                cls.logger.warning(f"{type(e)} while parsing {line_num}. line.")
+                cls.logger.info(f"{type(e)} while parsing {line_num}. line.")
                 return None
             new_line.mass_count_list.append(MassCount(mass, count))
         return new_line

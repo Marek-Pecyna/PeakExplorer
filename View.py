@@ -29,7 +29,7 @@ class View:
 
     @staticmethod
     def read_all_windows():
-        return sg.read_all_windows(timeout=500)
+        return sg.read_all_windows()
 
     def make_main_window(self):
         """ Define and creates main application window with PySimpleGUI """
@@ -42,7 +42,7 @@ class View:
         ]
 
         # ------ GUI Definition ------ #
-        file_types = (("Ascii-Dateien", "*.ascii*"),
+        file_types = (("Ascii-Dateien", "*.ascii"),
                       ("Text-Dateien", "*.txt"),
                       ("CSV-Dateien", "*.csv"),
                       ("Alle Dateien", "*.*"),)
@@ -93,11 +93,15 @@ class View:
         compute_layout = [
             [sg.Check("Verfolgen einer Massenspur", default=True, enable_events=True,
                       key="-MASS_TRACE-", s=30),
-             sg.Frame(title="", layout=[mass_frame], key='-FRAME1-', vertical_alignment="top", relief=sg.RELIEF_FLAT)],
+             sg.Frame(title="", layout=[mass_frame], key='-MASS_FRAME-', vertical_alignment="top", relief=sg.RELIEF_FLAT)],
             [sg.Check("Verfolgen eines Elutionszeitpunktes", default=True, enable_events=True,
                       key="-ELUTION_TIME_TRACE-", s=30),
-             sg.Frame(title="", layout=[time_frame], key='-FRAME2-', vertical_alignment="top", relief=sg.RELIEF_FLAT)],
-            ]
+             sg.Frame(title="", layout=[time_frame], key='-TIME_FRAME-', vertical_alignment="top", relief=sg.RELIEF_FLAT)],
+            [sg.Check("Anzeige mit Matplotlib", default=False,
+                      key="-MATPLOT-", s=30)],
+            [sg.Check("Öffnen in Excel", default=False,
+                      key="-EXCEL-", s=30)]
+        ]
 
         compute_frame = sg.Frame("Optionale Parameter", compute_layout, pad=(0, 10), expand_x=True)
 
@@ -234,11 +238,11 @@ class View:
 
         for line in text:
             layout.append([sg.T(line)])
-        layout.append([sg.T("Entwickelt von Datenanalyse Dr. Pecyna", font=("Arial", 15), text_color="blue")])
+        layout.append([sg.T("Entwickelt von Datenanalyse Dr. Pecyna", font=("Arial", 15))])
         layout.append([sg.B("E-Mail", use_ttk_buttons=True,
                        expand_x=True,
                        key="-EMAIL-")])
-        layout.append([sg.B("Webseite", use_ttk_buttons=True,
+        layout.append([sg.B("https://daten-entdecker.de", use_ttk_buttons=True,
                        expand_x=True,
                        key="-WEBSITE-")])
         choice, _ = sg.Window(window_title, layout=layout,
@@ -252,11 +256,7 @@ class View:
         return
 
     def make_result_window(self, filename="",
-                           number_of_entries=0,
-                           xy_array_mass=None, follow_mass_trace=False, mass=0, mass_interval=0,
-                           xy_array_time=None, follow_time_trace=False, time=0, time_interval=0,
-                           max_peaks=None,
-                           min_peaks=None):
+                           number_of_entries=0):
         """ Define and creates result window """
         View.logger.info(f"{self.make_result_window.__doc__}")
 
@@ -276,26 +276,25 @@ class View:
                          expand_x=True, justification="c", font=(font, font_size_title))
 
         result1_layout = [
-                         [sg.Canvas(key='-CANVAS1-')],
+                         [sg.Canvas(key='-CANVAS1-', expand_x=True, expand_y=True)],
                          [sg.Button('Exit', key="-EXIT1-")]
                          ]
 
         result2_layout = [
-                         [sg.Canvas(key='-CANVAS2-')],
+                         [sg.Canvas(key='-CANVAS2-', expand_x=True, expand_y=True)],
                          [sg.Button('Exit', key="-EXIT2-")]
                          ]
 
         tab = sg.TabGroup([
-            [sg.Tab('Counts per time', result1_layout, background_color='darkseagreen', key='-mykey-'),
+            [sg.Tab('Counts per time', result1_layout, background_color='darkseagreen'),
              sg.Tab('Counts per mass', result2_layout, background_color='darkslateblue')]],
-                          key='-TAB_GROUP-',
-        )
+                          key='-TAB_GROUP-', expand_x=True, expand_y=True)
 
         layout = [
             [sg.Menubar(menu_def, tearoff=False)],
             [header],
             [tab],
-            [sg.VPush()],
+            # [sg.VPush()],
             [sg.StatusBar(f"Datei: {filename}\n"
                           f"Einträge: {number_of_entries} Zeilen"), sg.Sizegrip()]
         ]
@@ -306,7 +305,7 @@ class View:
                                        grab_anywhere=True,
                                        resizable=True,
                                        element_justification='right')
-        self.result_window.set_min_size(self.main_window.size)
+        # self.result_window.set_min_size(self.main_window.size)
         return
 
     @staticmethod
@@ -353,7 +352,7 @@ class View:
         sg.popup(text, title=title)
         return
 
-    def plot_canvas(self, summary, mass, mass_interval, mass_trace, time, time_interval, elution_time_trace, max_peaks):
+    def plot_canvas(self, matplot, summary, mass, mass_interval, mass_trace, time, time_interval, elution_time_trace, max_peaks):
         number_masses_per_time = summary.number_of_masses_per_time
         max_mass_per_time = summary.max_mass_per_time
         min_mass_per_time = summary.min_mass_per_time
@@ -389,55 +388,14 @@ class View:
         ax2.set_ylabel('Counts')
         ax2.legend(loc='upper left', ncol=1)
         ax2.set_title('Counts per Mass')
-
-        self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
-        self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
-
-        # plt.show()
-        # fig1.suptitle(f"HPLC-MS Data '{Path(self.ascii_filename).name}'")
-        return
-
         """
-        # make fig and plot
-        subplot1_x = [value[0] for value in xy_array_mass]
-        subplot1_y = [value[1] for value in xy_array_mass]
-    
-        fig1, ax = plt.subplots()
-        ax.plot(subplot1_x, subplot1_y, color='blue', label='Total counts')
-        if follow_mass_trace:
-            subplot1_y2 = [value[2] for value in xy_array_mass]
-            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for mass trace {mass} ± {mass_interval}")
-    
-        # Make data to numpy-arrays
-        x = np.array([value[0] for value in xy_array_mass])
-        y = np.array([value[1] for value in xy_array_mass])
-    
-        # find peaks
-        max_peaks, min_peaks = self.peakdetect(y_axis=y, x_axis=x, lookahead=50, delta=0)
-        subplot1_x = [value[0] for value in max_peaks]  # Position
-        subplot1_y = [value[1] for value in max_peaks]  # Peak value
-        ax.scatter(subplot1_x, subplot1_y, color='green', label='Maxima')
-    
-        ax.set_xlabel('Elution time [min]')
-        ax.set_ylabel('Counts')
-        ax.legend(loc='upper left', ncol=1)
-        # Instead of plt.show
-        self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
-    
-        subplot1_x = [value[0] for value in xy_array_time]
-        subplot1_y = [value[1] for value in xy_array_time]
-    
-        fig2, ax = plt.subplots()
-        ax.plot(subplot1_x, subplot1_y, color='blue', label='Summed up total counts')
-        if follow_time_trace:
-            subplot1_y2 = [value[2] for value in xy_array_time]
-            ax.plot(subplot1_x, subplot1_y2, color='orange', label=f"Counts for minute trace {time} ± {time_interval}")
-        ax.set_xlabel('Ion masses [Da]')
-        ax.set_ylabel('Counts')
-        ax.legend(loc='upper left', ncol=1)
-        # Instead of plt.show
-        self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
+        if matplot:
+            plt.show()
+        else:
+            self.draw_figure(self.result_window['-CANVAS1-'].TKCanvas, fig1)
+            self.draw_figure(self.result_window['-CANVAS2-'].TKCanvas, fig2)
         """
+        return fig1, fig2
 
 
 def module_test():

@@ -9,9 +9,8 @@ elution time trace: 4.2 Min
 mass trace: 425 Da
 elution time trace: 13.2 Min
 
-Command-Line argument:
-    -db_console <level>: Choosing Debug level for console
-    -db_file <level>: Choosing Debug level for file
+Command-Line arguments:
+    -debug: Enable Debug (level 10) for console and log_file
     -log_file <filename>
 """
 
@@ -79,12 +78,16 @@ def main():
 
     # Parse command-line arguments for logging
     for index, entry in enumerate(sys.argv):
-        if entry == "-db_console":
-            db_console = int(sys.argv[index + 1])
-        if entry == "-db_file":
-            db_file = int(sys.argv[index + 1])
+        if entry == "-debug":
+            db_console = 10
+            db_file = 10
+            if index + 1 < len(sys.argv):
+                db_console = int(sys.argv[index + 1])
+                db_file = int(sys.argv[index + 1])
         if entry == "-log_file":
-            log_file = sys.argv[index + 1]
+            if index + 1 < len(sys.argv):
+                log_file = sys.argv[index + 1]
+
 
     # Start logger
     logger = setup_logging(db_console, db_file, log_file)
