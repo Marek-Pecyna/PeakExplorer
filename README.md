@@ -2,7 +2,7 @@
 
 __Analyzes and visualizes HPLC-MS Data given in simple ASCII format (CSV format)__
 
-Good example values for example file 'Beispiel_asci.ascii':
+Good example values for example file 'sample_data.ascii':
 > mass trace: 465 Da
 > 
 > elution time trace: 4.2 Min
