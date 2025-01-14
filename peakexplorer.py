@@ -1,5 +1,5 @@
 """
-Peak Explorer 2023
+Peak Explorer v0.31
 Analyzes and visualizes HPLC-MS Data given in simple ascii format (CSV format)
 
 Good example values for example file 'Beispiel_asci.ascii':
@@ -47,7 +47,7 @@ def add_logging_level(level_name, level_num, method_name=None):
     return
 
 
-def setup_logging(console_level, file_level, log_file='running_explorer.log'):
+def setup_logging(console_level, file_level=None, log_file='running_explorer.log'):
     """ Setup logging for whole application """
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -62,18 +62,20 @@ def setup_logging(console_level, file_level, log_file='running_explorer.log'):
     sh.setLevel(console_level)
     sh.setFormatter(formatter)
     logger.addHandler(sh)
+
     # File logging
-    fh = logging.FileHandler(log_file, mode="w")
-    fh.setLevel(file_level)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    if file_level:
+        fh = logging.FileHandler(log_file, mode="w")
+        fh.setLevel(file_level)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
     return logger
 
 
 def main():
     # Set logging defaults
     db_console = 30  # equals logging.WARNING
-    db_file = 25  # equals logging.NOTE (between INFO and WARNING)
+    db_file = None  # -> no logging in file
     log_file = 'running_explorer.log'
 
     # Parse command-line arguments for logging

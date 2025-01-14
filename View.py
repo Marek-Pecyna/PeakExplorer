@@ -7,6 +7,9 @@ import webbrowser
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg  # The matplot tk canvas
 
+alw = b'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'
+arw = b'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'
+
 __all__ = ['View']
 
 
@@ -47,11 +50,13 @@ class View:
                       ("CSV-Dateien", "*.csv"),
                       ("Alle Dateien", "*.*"),)
         font = "Arial"
+        font_size = 11
         font_size_title = 15
         default_text = DEFAULT_ASCII_FILE
 
         if self.settings:
             font = self.settings["GUI"]["font_family"]
+            font_size = int(self.settings["GUI"]["font_size"])
             font_size_title = int(int(self.settings["GUI"]["font_size"]) * 1.4)
             if self.settings["GUI"]["last_file"] != "":
                 default_text = self.settings["GUI"]["last_file"]
@@ -76,8 +81,8 @@ class View:
             sg.T("±", s=1),
             sg.Input("", s=4, pad=0, k="-MASS_INTERVAL-", readonly=True, tooltip="0.1 bis 16.0 Da einstellbar"),
             sg.T("Da", s=3, pad=0, key='-MASS_TEXT2-'),
-            sg.B("🡄", pad=0, button_color="grey", k="-MASS_INTERVAL_DOWN-"),
-            sg.B("🡆", pad=0, button_color="grey", k="-MASS_INTERVAL_UP-")
+            sg.B(image_source=alw, image_subsample=5, pad=0, k="-MASS_INTERVAL_DOWN-"),
+            sg.B(image_source=arw, image_subsample=5, pad=0, k="-MASS_INTERVAL_UP-")
             ]
 
         time_frame = [
@@ -86,8 +91,8 @@ class View:
             sg.T("±", s=1),
             sg.Input("", s=4, pad=0, k="-TIME_INTERVAL-", readonly=True, tooltip="0.1 bis 1.0 Min einstellbar"),
             sg.T("Min", s=3, pad=0, key="-TIME_TEXT2-"),
-            sg.B("🡄", pad=0, button_color="grey", k="-TIME_INTERVAL_DOWN-"),
-            sg.B("🡆", pad=0, button_color="grey", k="-TIME_INTERVAL_UP-")
+            sg.B(image_source=alw, image_subsample=5, pad=0, k="-TIME_INTERVAL_DOWN-"),
+            sg.B(image_source=arw, image_subsample=5, pad=0, k="-TIME_INTERVAL_UP-")
             ]
 
         compute_layout = [
