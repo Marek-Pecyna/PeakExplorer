@@ -1,5 +1,5 @@
 import logging
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 import numpy as np
 
 from Constants import DEFAULT_ASCII_FILE
@@ -106,7 +106,7 @@ class View:
         compute_frame = sg.Frame("Optionale Parameter", compute_layout, pad=(0, 10), expand_x=True)
 
         layout = [
-            [sg.Menubar(menu_def, tearoff=False)],
+            [sg.Menu(menu_def, tearoff=False)],
             [header],
             [source_file_frame],
             [compute_frame],
@@ -291,7 +291,7 @@ class View:
                           key='-TAB_GROUP-', expand_x=True, expand_y=True)
 
         layout = [
-            [sg.Menubar(menu_def, tearoff=False)],
+            [sg.Menu(menu_def, tearoff=False)],
             [header],
             [tab],
             # [sg.VPush()],

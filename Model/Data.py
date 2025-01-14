@@ -178,7 +178,7 @@ class Data:
         # maxima and minima candidates are temporarily stored in
         # _max and _min respectively
         _min, _max = np.inf, -np.inf
-        min_pos, max_pos = np.NaN, np.NaN
+        min_pos, max_pos = np.nan, np.nan
 
         # Only detect peak if there is 'lookahead' amount of points after it
         for index, (x, y) in enumerate(zip(x_axis[:-lookahead],
@@ -202,15 +202,15 @@ class Data:
                 min_pos = x
 
             # # # # look for max # # # #
-            if y < _max - delta and _max != np.Inf:
+            if y < _max - delta and _max != np.inf:
                 # Maxima peak candidate found
                 # look ahead in signal to ensure that this is a peak and not jitter
                 if y_axis[index:index + lookahead].max() < _max:
                     max_peaks.append([max_pos, _max])
                     dump.append(True)
                     # set algorithm to only find minima now
-                    _max = np.Inf
-                    _min = np.Inf
+                    _max = np.inf
+                    _min = np.inf
                     if index + lookahead >= length:
                         # end is within lookahead no more peaks can be found
                         break
@@ -220,15 +220,15 @@ class Data:
                 #    max_pos = x_axis[np.where(y_axis[index:index+lookahead]==_max)]
 
             # # # # look for min # # # #
-            if y > _min + delta and _min != -np.Inf:
+            if y > _min + delta and _min != -np.inf:
                 # Minima peak candidate found
                 # look ahead in signal to ensure that this is a peak and not jitter
                 if y_axis[index:index + lookahead].min() > _min:
                     min_peaks.append([min_pos, _min])
                     dump.append(False)
                     # set algorithm to only find maxima now
-                    _min = -np.Inf
-                    _max = -np.Inf
+                    _min = -np.inf
+                    _max = -np.inf
                     if index + lookahead >= length:
                         # end is within lookahead no more peaks can be found
                         break
