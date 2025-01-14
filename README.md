@@ -1,4 +1,4 @@
-# PeakExplorer
+# PeakExplorer v0.3
 
 __Analyzes and visualizes HPLC-MS Data given in simple ASCII format (CSV format)__
 
